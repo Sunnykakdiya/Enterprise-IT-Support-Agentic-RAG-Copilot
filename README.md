@@ -1,6 +1,6 @@
 # Enterprise IT Support Agentic RAG Copilot
 
-An end-to-end **Forward Deployed Engineer (FDE) project** that turns a notebook-style Agentic RAG workflow into a deployable internal product using **LangGraph, FastAPI, Pinecone, Groq, Tavily, HTML, CSS, and JavaScript**.
+An end-to-end **Forward Deployed Engineer (FDE) project** that turns a notebook-style Agentic RAG workflow into a deployable internal product using **LangGraph, FastAPI, Pinecone, Google Gemini (`gemini-3.5-flash-lite`), HuggingFace Embeddings, Tavily, HTML, CSS, and JavaScript**.
 
 ---
 
@@ -79,41 +79,42 @@ This repository demonstrates each layer.
 ## 3. Simple Architecture
 
 ```text
-                   ┌─────────────────────┐
-                   │   Employee / User   │
-                   └──────────┬──────────┘
-                              │
-                              ▼
-                   ┌─────────────────────┐
-                   │ HTML/CSS/JavaScript │
-                   │      Web UI         │
-                   └──────────┬──────────┘
-                              │ POST /api/chat
-                              ▼
-                   ┌─────────────────────┐
-                   │       FastAPI       │
-                   └──────────┬──────────┘
-                              │
-                              ▼
-                   ┌─────────────────────┐
-                   │     LangGraph       │
-                   │ Agentic RAG Control │
-                   └──────────┬──────────┘
-                              │
-               ┌──────────────┴──────────────┐
-               │                             │
-               ▼                             ▼
-       ┌───────────────┐              ┌──────────────┐
-       │ Private KB    │              │ Tavily Web   │
-       │ Pinecone      │              │ Search       │
-       └───────┬───────┘              └──────┬───────┘
-               │                             │
-               └──────────────┬──────────────┘
-                              ▼
-                     ┌────────────────┐
-                     │ Groq LLM       │
-                     │ Grounded Answer│
-                     └────────────────┘
+                    ┌─────────────────────┐
+                    │   Employee / User   │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │ HTML/CSS/JavaScript │
+                    │       Web UI        │
+                    └──────────┬──────────┘
+                               │ POST /api/chat
+                               ▼
+                    ┌─────────────────────┐
+                    │       FastAPI       │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │      LangGraph      │
+                    │ Agentic RAG Control │
+                    └──────────┬──────────┘
+                               │
+                ┌──────────────┴──────────────┐
+                │                             │
+                ▼                             ▼
+        ┌───────────────┐              ┌──────────────┐
+        │ Private KB    │              │ Tavily Web   │
+        │ Pinecone      │              │ Search       │
+        └───────┬───────┘              └──────┬───────┘
+                │                             │
+                └──────────────┬──────────────┘
+                               ▼
+                      ┌───────────────────────────┐
+                      │ Google Gemini LLM         │
+                      │ (gemini-3.5-flash-lite)   │
+                      │ Grounded Answer           │
+                      └───────────────────────────┘
 ```
 
 ---
@@ -135,7 +136,7 @@ Question
 [3] Grade Private Evidence
        ┌────────┴────────┐
        │                 │
-     GOOD               WEAK
+      GOOD              WEAK
        │                 │
        ▼                 ▼
 Generate from KB    [4] Tavily Web Search
@@ -143,7 +144,7 @@ Generate from KB    [4] Tavily Web Search
                   [5] Grade Web Evidence
                     ┌────┴─────┐
                     │          │
-                  GOOD        WEAK
+                   GOOD       WEAK
                     │          │
                     ▼          ▼
               Generate Web  [6] Rewrite Query
@@ -185,8 +186,8 @@ The system therefore controls **what to do next** based on its current state.
 | Layer | Technology | Purpose |
 |---|---|---|
 | Agent workflow | LangGraph | Stateful routing and conditional decisions |
-| LLM | Groq | Routing, grading, rewriting, answer generation |
-| Embeddings | HuggingFace `all-MiniLM-L6-v2` | Local 384-dimensional embeddings |
+| LLM | Google Gemini (`gemini-3.5-flash-lite`) | Low-latency routing, grading, rewriting, and answer generation |
+| Embeddings | HuggingFace `sentence-transformers/all-MiniLM-L6-v2` | Local open-source 384-dimensional embeddings |
 | Vector DB | Pinecone | Private enterprise knowledge base |
 | External search | Tavily | Fallback when company KB is insufficient |
 | API | FastAPI | Backend and REST endpoints |
@@ -211,7 +212,7 @@ FDE_Agentic_RAG_IT_Copilot/
 │   │
 │   ├── rag/
 │   │   ├── state.py               # LangGraph state + structured decisions
-│   │   ├── vectorstore.py         # Pinecone + embeddings
+│   │   ├── vectorstore.py         # Pinecone + HuggingFace embeddings
 │   │   └── workflow.py            # Complete Agentic RAG graph
 │   │
 │   ├── services/
@@ -277,9 +278,8 @@ pip install -r requirements.txt
 Create a `.env` file in the project root directory with the following variables:
 
 ```env
-# LLM API Keys
-GROQ_API_KEY=your_groq_api_key_here
-OPENAI_API_KEY=your_openai_api_key_here
+# LLM API Key (Google Gemini)
+GEMINI_API_KEY=your_gemini_api_key_here
 
 # External Search
 TAVILY_API_KEY=your_tavily_api_key_here
@@ -289,10 +289,9 @@ PINECONE_API_KEY=your_pinecone_api_key_here
 PINECONE_INDEX_NAME=fde-it-support-rag
 PINECONE_NAMESPACE=company-it-kb
 
-# LLM Models
-GROQ_MODEL=openai/gpt-oss-20b
-OPENAI_MODEL=gpt-4o-mini
-EMBEDDING_MODEL=text-embedding-3-small
+# Models
+GEMINI_MODEL=gemini-3.5-flash-lite
+EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 
 # Security
 ADMIN_API_KEY=change-me-in-production
@@ -305,15 +304,13 @@ APP_ENV=development
 
 | Variable | Description | Example | Required |
 |---|---|---|---|
-| `GROQ_API_KEY` | API key for Groq LLM (routing, grading, generation) | `gsk_...` | ✅ Yes |
-| `OPENAI_API_KEY` | API key for OpenAI (embeddings and fallback LLM) | `sk-...` | ✅ Yes |
+| `GEMINI_API_KEY` | API key for Google Gemini LLM (routing, grading, rewriting, generation) | `AIza...` | ✅ Yes |
 | `TAVILY_API_KEY` | API key for Tavily web search | `tvly-...` | ✅ Yes |
 | `PINECONE_API_KEY` | API key for Pinecone vector database | `pckey-...` | ✅ Yes |
 | `PINECONE_INDEX_NAME` | Pinecone index name | `fde-it-support-rag` | ⚠️ Optional (default: `fde-it-support-rag`) |
 | `PINECONE_NAMESPACE` | Pinecone namespace for document isolation | `company-it-kb` | ⚠️ Optional (default: `company-it-kb`) |
-| `GROQ_MODEL` | Groq model identifier | `openai/gpt-oss-20b` | ⚠️ Optional (default: `openai/gpt-oss-20b`) |
-| `OPENAI_MODEL` | OpenAI model identifier | `gpt-4o-mini` | ⚠️ Optional (default: `gpt-4o-mini`) |
-| `EMBEDDING_MODEL` | Embedding model for vectorization | `text-embedding-3-small` | ⚠️ Optional (default: `text-embedding-3-small`) |
+| `GEMINI_MODEL` | Google Gemini model identifier | `gemini-3.5-flash-lite` | ⚠️ Optional (default: `gemini-3.5-flash-lite`) |
+| `EMBEDDING_MODEL` | Open-source HuggingFace embedding model for local vectorization | `sentence-transformers/all-MiniLM-L6-v2` | ⚠️ Optional (default: `sentence-transformers/all-MiniLM-L6-v2`) |
 | `ADMIN_API_KEY` | Secret key for admin endpoints (document ingestion) | `your-secure-key` | ⚠️ Optional (default: `change-me`) |
 | `APP_ENV` | Application environment | `development` or `production` | ⚠️ Optional (default: `development`) |
 
@@ -339,7 +336,7 @@ Load Documents
    ↓
 Chunk Text
    ↓
-HuggingFace Embeddings
+HuggingFace Embeddings (all-MiniLM-L6-v2)
    ↓
 Pinecone Vector Database
 ```
@@ -353,13 +350,13 @@ python run.py
 Open:
 
 ```text
-http://127.0.0.1:8000
+[http://127.0.0.1:8000](http://127.0.0.1:8000)
 ```
 
 FastAPI API docs:
 
 ```text
-http://127.0.0.1:8000/docs
+[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 ```
 
 ---
@@ -490,7 +487,7 @@ Load Text
   ↓
 Recursive Chunking
   ↓
-Embeddings
+HuggingFace Embeddings
   ↓
 Pinecone Indexing
   ↓
@@ -538,5 +535,3 @@ Response contains:
 Protected by the `X-Admin-Key` request header.
 
 Uploads a document and adds its chunks to Pinecone.
-
----
